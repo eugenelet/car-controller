@@ -17,7 +17,7 @@ socklen_t fromlen;
 struct sockaddr_in server;
 struct sockaddr_in from;
 char buf[1024];
-unsigned short recvPacket[512];
+unsigned char recvPacket[1024];
 
 void error_receiver(const char *msg)
 {
@@ -50,7 +50,7 @@ void receiver_init(char *port)
 	// 	if (n  < 0) error_receiver("sendto");
 }
 
-unsigned short* receiver(){
+unsigned char* receiver(){
 	n = recvfrom(sock,recvPacket,1024,0,(struct sockaddr *)&from,&fromlen);
 	if (n < 0) error_receiver("recvfrom");
 //	cout << hex << recvPacket[0]<<endl;

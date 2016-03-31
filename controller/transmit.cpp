@@ -10,7 +10,7 @@
 #include <string.h>
 #define DATAGRAM_SIZE	1024
 void error_transmit(const char *);
-int transmit(char *ip_addr, char* port, unsigned short* data)
+int transmit(char *ip_addr, char* port, unsigned char* data)
 {
    int sock, n;
    unsigned int length;

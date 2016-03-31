@@ -7,15 +7,20 @@
 #include "getChar.cpp"
 #include "receiver.cpp"
 #include "transmit.cpp"
+#include <pthread.h>
+#include <vector>
+#include "opencv2/opencv.hpp"
+
 using namespace std;
+using namespace cv;
 
 /*************************************
         OP CODE
 **************************************/
 
-#define CONTROL 0x1000
-#define PICTURE 0x2000
-#define VIDEO   0x4000
+#define CONTROL 0x01
+#define PICTURE 0x02
+#define VIDEO   0x03
 
 /*************************************
         FUNCTION
@@ -25,34 +30,36 @@ using namespace std;
 /**************************
         CONTROL
 ***************************/
-#define FORWARD 0x0100
-#define BACK    0x0200
-#define LEFT    0x0400
-#define RIGHT   0x0800
+#define IDLE    0x00
+#define FORWARD 0x01
+#define BACK    0x02
+#define LEFT    0x03
+#define RIGHT   0x04
 
 
 /**************************
         VIDEO
 ***************************/
-#define SENDING 0x0010
-#define VALID   0x0020
-#define REQUEST 0x0040
-#define SENT    0x0080
-
+#define START   0x00
+#define VALID   0x01
+#define REQUEST 0x02
+#define STOP	0x03
+#define SENT    0x04
 
 
 
 static char* rcv_PORT="2022";
 static char* snd_PORT="2023";
-/*const unsigned short FORWARD=0x0100;
-const unsigned short BACK=0x0200;
-const unsigned short LEFT=0x0400;
-const unsigned short RIGHT=0x0800;
-const unsigned short CONTROL=0x0001;
-const unsigned short PICTURE=0x0010;
-const unsigned short VIDEO=0x0011;
+/*const unsigned char FORWARD=0x0100;
+const unsigned char BACK=0x0200;
+const unsigned char LEFT=0x0400;
+const unsigned char RIGHT=0x0800;
+const unsigned char CONTROL=0x0001;
+const unsigned char PICTURE=0x0010;
+const unsigned char VIDEO=0x0011;
 */
 static char* IP_ADDR = "127.0.0.1";
+//static char* IP_ADDR = "192.168.31.241";
 /*
 
 
@@ -120,11 +127,83 @@ void right(){
 	rearRight2->setval_gpio("0");
 }
 */
+
+int quit_check(pthread_mutex_t *mutex){
+	switch(pthread_mutex_trylock(mutex)){
+		case 0:{
+			pthread_mutex_unlock(mutex);
+			return 1;
+		}
+		case EBUSY:{
+			return 0;
+		}
+
+	}
+	return 1;
+}
+
+void *video_do(void *mtx_check){
+	unsigned char output[1024];
+	pthread_mutex_t *mtx = ((pthread_mutex_t *) mtx_check);
+	VideoCapture cap(0); // open the default camera
+    if(!cap.isOpened())  // check if we succeeded
+        return NULL;
+
+	while( !quit_check(mtx) ){
+	//	cout << "SENDING VIDEO..." <<endl;
+		Mat video_stream;
+		cap >> video_stream;
+		int size = video_stream.total() * video_stream.elemSize();
+		unsigned char* raw_video = video_stream.data;
+		int data_count = 0;
+/*  ===========================================
+ *		Send first Packet
+ *  ===========================================
+*/
+		output[0] = VIDEO;
+		output[1] = START;
+		output[2] = (unsigned char) (video_stream.rows & 0x000000ff); // LSB of Row
+		output[3] = (unsigned char) ((video_stream.rows >> 2) & 0x000000ff); //MSB of Row
+		output[4] = (unsigned char) ((video_stream.cols) & 0x000000ff);// LSB of Cols
+		output[5] = (unsigned char) ((video_stream.cols >> 2) & 0x000000ff); // MSB of Cols
+		for(data_count=0 ; (data_count < size) && (data_count < 1018) ; data_count++){
+			output[data_count + 6] = raw_video[data_count];
+		}
+		transmit(IP_ADDR, snd_PORT, output);
+		while(data_count < size){
+			cout << "Data Count: " << data_count << endl;
+			output[0] = VIDEO;
+			output[1] = VALID;
+			for(int i = 0 ; (data_count < size) && (i < 1022) ; i++, data_count++){
+				output[i + 2] = raw_video[data_count];
+			}
+			if(data_count == size){
+				output[0] = VIDEO;
+				output[1] = SENT;
+				transmit(IP_ADDR, snd_PORT, output);
+				break; //quit while loop for next image capture;
+			}
+			else{
+				transmit(IP_ADDR, snd_PORT, output);
+			}
+			
+		}
+
+
+	}
+	
+	return NULL;
+
+}
+
 int main (void)
 {
 	char keyIn;
-	unsigned short* receivedPacket;
-	unsigned short opcode;
+	unsigned char* receivedPacket;
+	unsigned char opcode;
+	pthread_t video_thread;
+	pthread_mutex_t video_mutex;
+
 /*
     frontLeft1 = new GPIOClass("6"); //create new GPIO object to be attached to  GPIO4
     frontLeft2 = new GPIOClass("13"); //create new GPIO object to be attached to  GPIO4
@@ -160,39 +239,42 @@ int main (void)
     {
 		receivedPacket = receiver();
 		//cout << receivedPacket[0]<<endl;		
-		if((receivedPacket[0] & CONTROL)){
+		if((receivedPacket[0] == CONTROL)){
 			opcode = CONTROL;	
 		}		
-		else if((receivedPacket[0] & PICTURE)){
+		else if((receivedPacket[0] == PICTURE)){
 			opcode = PICTURE;	
 		}		
-		else if((receivedPacket[0] & VIDEO)){
+		else if((receivedPacket[0] == VIDEO)){
 			opcode = VIDEO;	
 		}		
 		else{opcode = NULL;}
 
 		switch(opcode){
 			case CONTROL:{
-					if((receivedPacket[0] & FORWARD)){
+					if((receivedPacket[1] == FORWARD)){
 		//				forward();
 						cout << "FORWARD" << endl;
-						unsigned short output[512];///TEST
-						output[0] = 0x1010;//TEST
+						unsigned char output[1024];///TEST
+						output[0] = 0x10;//TEST
 						transmit(IP_ADDR, snd_PORT, output);//TEST
 					}
-					else if((receivedPacket[0] & BACK)){
+					else if((receivedPacket[1] == BACK)){
 		//				back();
 						cout << "back" << endl;
 					}
-					else if((receivedPacket[0] & LEFT)){
+					else if((receivedPacket[1] == LEFT)){
 		//				left();
 						cout << "LEFT" << endl;
 					}
-					else if((receivedPacket[0] & RIGHT)){
+					else if((receivedPacket[1] == RIGHT)){
 		//				right();
 						cout << "RIGHT" << endl;
 					}
-					else {}//idle();}
+					else {
+						cout << "IDLE" << endl;
+						//idle();
+					}
 					
 					break;	
 				}
@@ -203,6 +285,22 @@ int main (void)
 			}
 			case VIDEO:{
 				cout << "VIDEO" << endl;
+				switch(receivedPacket[1]){
+					case REQUEST:{
+						cout << "VIDEO REQUEST... " << endl;
+						pthread_mutex_init(&video_mutex, NULL);
+						pthread_mutex_lock(&video_mutex);
+						pthread_create(&video_thread, NULL, video_do, &video_mutex);
+						break;
+					}
+					case STOP:{
+						cout << "VIDEO STOP... " << endl;
+						pthread_mutex_unlock(&video_mutex);
+						pthread_join(video_thread, NULL);
+						break;
+					}
+					default: {break;}
+				}
 				break;
 				//idle();
 			}
