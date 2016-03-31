@@ -166,6 +166,7 @@ void *video_do(void *mtx_check){
 		output[3] = (unsigned char) ((video_stream.rows >> 2) & 0x000000ff); //MSB of Row
 		output[4] = (unsigned char) ((video_stream.cols) & 0x000000ff);// LSB of Cols
 		output[5] = (unsigned char) ((video_stream.cols >> 2) & 0x000000ff); // MSB of Cols
+		cout << "Depth: " << video_stream.type() << endl;
 		for(data_count=0 ; (data_count < size) && (data_count < 1018) ; data_count++){
 			output[data_count + 6] = raw_video[data_count];
 		}

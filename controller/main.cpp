@@ -113,12 +113,12 @@ void* video_thread(void* data){//receive video
 					}
 					cout << "size counter: " << size_counter << endl;
 					cout << "Buffer Size: " << video_buffer.size() << endl;
-					if(video_buffer.size() < image_size){ break;}
+	//				if(video_buffer.size() < image_size){ break;}
 					unsigned char* whole_vid = &video_buffer[0];
-					Mat vid_Mat(rows, cols, 0, whole_vid);
+					Mat vid_Mat(rows, cols, 16, whole_vid);
 					test = vid_Mat;
 					test_flag = 1;
-					//imshow("video", vid_Mat);
+		//			imshow("video", vid_Mat);
 					video_buffer.clear();
 					break;
 				}
@@ -128,6 +128,10 @@ void* video_thread(void* data){//receive video
 
 	}
 	pthread_exit(NULL);
+}
+
+void* display_thread(void* data){
+
 }
 
 int main (void)
@@ -140,30 +144,16 @@ int main (void)
 	pthread_create(&video_t, NULL, video_thread, (void*)&keyIn);
 
 
-    VideoCapture cap(0); // open the default camera
-    if(!cap.isOpened())  // check if we succeeded
-        return -1;
+	namedWindow("edges",1);//TEST
 
-    Mat edges;
-    namedWindow("edges",1);
-
-
-
-
-//	namedWindow("edges",1);//TEST
     while(1)
     {
-
-        Mat frame;
-        cap >> frame; // get a new frame from camera
-        cvtColor(frame, edges, CV_BGR2GRAY);
-        GaussianBlur(edges, edges, Size(7,7), 1.5, 1.5);
-        Canny(edges, edges, 0, 30, 3);
-        imshow("edges", edges);
-        if(waitKey(30) >= 0) break;
-	//	if(test_flag){
-	//		imshow("edges", test);
-	//	}
+	
+		if(test_flag){
+//			test_flag = 0;
+			imshow("edges", test);
+			break;
+		}
 		if(receive_flag){
 			//cout << hex << receivedPacket[0];//TEST
 			receive_flag = false;
@@ -226,5 +216,6 @@ int main (void)
 			}
 		}
 	}
+	waitKey(0);
     return 0;
 }

@@ -20,7 +20,8 @@ int transmit(char *ip_addr, char* port, unsigned char* data)
   // if (argc != 3) { printf("Usage: server port\n");
   //                  exit(1);
   // }
-   sock= socket(AF_INET, SOCK_DGRAM, 0);
+//  sock= socket(AF_INET, SOCK_DGRAM, 0);
+	sock = socket(AF_INET, SOCK_STREAM, 0);
    if (sock < 0) error_transmit("socket");
 
    server.sin_family = AF_INET;
@@ -36,9 +37,14 @@ int transmit(char *ip_addr, char* port, unsigned char* data)
    //bzero(buffer,256);
    //fgets(buffer,255,stdin);
 	//scanf("%u", test);
-   n=sendto(sock,data,
-            DATAGRAM_SIZE,0,(const struct sockaddr *)&server,length);
-   if (n < 0) error_transmit("Sendto");
+    if (connect(sock,(struct sockaddr *) &server,sizeof(server)) < 0)
+        error_transmit("ERROR connecting");
+
+//   n=sendto(sock,data,
+  //          DATAGRAM_SIZE,0,(const struct sockaddr *)&server,length);
+	n = write(sock,data, DATAGRAM_SIZE);
+
+   if (n < 0) error_transmit("Write");
   // n = recvfrom(sock,buffer,256,0,(struct sockaddr *)&from, &length);
   // if (n < 0) error_transmit("recvfrom");
   // write(1,"Got an ack: ",12);

@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int sock, length, n;
+int sock, length, n, newsockfd;
 socklen_t fromlen;
 struct sockaddr_in server;
 struct sockaddr_in from;
@@ -32,7 +32,8 @@ void receiver_init(char *port)
 	// 	exit(0);
 	//}
 	
-	sock=socket(AF_INET, SOCK_DGRAM, 0);
+//	sock=socket(AF_INET, SOCK_DGRAM, 0);
+	sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock < 0) error_receiver("Opening socket");
 	length = sizeof(server);
 	bzero(&server,length);
@@ -42,6 +43,7 @@ void receiver_init(char *port)
 	if (bind(sock,(struct sockaddr *)&server,length)<0) 
 		error_receiver("binding");
 	fromlen = sizeof(struct sockaddr_in);
+     listen(sock,5);
 	 //	write(1,"Received a datagram: ",21);
 	 //	 snprintf(buf, 1024,"%u",recvPacket[0]);
 	 //	write(1,buf,n);
@@ -51,8 +53,13 @@ void receiver_init(char *port)
 }
 
 unsigned char* receiver(){
-	n = recvfrom(sock,recvPacket,1024,0,(struct sockaddr *)&from,&fromlen);
-	if (n < 0) error_receiver("recvfrom");
+//	n = recvfrom(sock,recvPacket,1024,0,(struct sockaddr *)&from,&fromlen);
+     newsockfd = accept(sock,
+             (struct sockaddr *) &from,
+             &fromlen);
+
+	n = read(newsockfd,recvPacket,1023);
+	if (n < 0) error_receiver("Read");
 //	cout << hex << recvPacket[0]<<endl;
 	return recvPacket;
 }
