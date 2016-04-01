@@ -90,8 +90,8 @@ void* video_thread(void* data){//receive video
 					rows = (int) (receivedPacket[3] << 2) | (receivedPacket[2]);
 					cols = (int) (receivedPacket[5] << 2) | (receivedPacket[4]);
 					image_size = rows * cols * 3;
-	//				cout << "Rows: " << rows << endl;
-	//				cout << "Columns: " << cols << endl;
+					cout << "Rows: " << rows << endl;
+					cout << "Columns: " << cols << endl;
 	//				cout << "Packet 4: " << receivedPacket[4]  << endl;
 	//				cout << "Packet 5: " << receivedPacket[5]  << endl;
 	//				cout << "Image Size: " << image_size << endl;
